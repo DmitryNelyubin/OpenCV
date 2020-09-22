@@ -1,9 +1,17 @@
 #include <opencv2/opencv.hpp>
+#include <vector>
 
 using namespace cv;
+using std::vector;
 
-void customSmoothing(const Mat& src, Mat& result);
+void customSmoothing(const Mat& src, Mat& result, unsigned size);
 void customGradient(const Mat& src, Mat& result);
+void customFilter(const Mat& src, Mat& result,
+                  const vector<vector<double> >& kernel);
+uchar calculateGreyPixel(const Mat& src, const vector<vector<double> >& kernel,
+                         int i, int j);
+uchar calculatePixel(const Mat& src, const vector<vector<double> >& kernel,
+                     int i, int j, int p);
 
 int main(int argc, char** argv) {
   if (argc != 2) return -1;
@@ -15,7 +23,7 @@ int main(int argc, char** argv) {
   namedWindow("Pussy Gaussian", WINDOW_AUTOSIZE);
   imshow("Pussy Gaussian", imageRes);
 
-  customSmoothing(image, imageRes);
+  customSmoothing(image, imageRes, 5);
   namedWindow("Pussy Custom", WINDOW_AUTOSIZE);
   imshow("Pussy Custom", imageRes);
 
@@ -28,30 +36,79 @@ int main(int argc, char** argv) {
   return 0;
 }
 
-void customSmoothing(const Mat& src, Mat& result) {
-  Mat kernel(5, 5, CV_64F);
+void customSmoothing(const Mat& src, Mat& result, unsigned size) {
+  src.copyTo(result);
 
-  for (int i = 0; i < 5; ++i) {
-    for (int j = 0; j < 5; ++j) {
-      kernel.at<double>(i, j) = 1. / 25.;
-    }
-  }
+  vector<vector<double> > kernel(size,
+                                 vector<double>(size, 1. / (size * size)));
 
-  filter2D(src, result, -1, kernel);
+  customFilter(src, result, kernel);
 }
 
 void customGradient(const Mat& src, Mat& result) {
-  Mat kernel(3, 3, CV_32FC1);
+  src.copyTo(result);
 
-  kernel.at<double>(0, 0) = -3;
-  kernel.at<double>(0, 1) = -10;
-  kernel.at<double>(0, 2) = -3;
-  kernel.at<double>(1, 0) = 0;
-  kernel.at<double>(1, 1) = 0;
-  kernel.at<double>(1, 2) = 0;
-  kernel.at<double>(2, 0) = 3;
-  kernel.at<double>(2, 1) = 10;
-  kernel.at<double>(2, 2) = 3;
+  vector<vector<double> > kernel = {{-3, -10, -3}, {0, 0, 0}, {3, 10, 3}};
 
-  filter2D(src, result, -1, kernel);
+  customFilter(src, result, kernel);
+}
+
+void customFilter(const Mat& src, Mat& result,
+                  const vector<vector<double> >& kernel) {
+  int rows = src.rows;
+  int border = static_cast<int>(kernel.size() / 2);
+  if (src.type() == 0) {
+    for (int i = border; i < rows - border + 1; ++i) {
+      for (int j = border; j < rows - border + 1; ++j) {
+        result.at<uchar>(i, j) = calculateGreyPixel(src, kernel, i, j);
+      }
+    }
+  } else {
+    for (int i = border; i < rows - border + 1; ++i) {
+      for (int j = border; j < rows - border + 1; ++j) {
+        for (int p = 0; p < 3; ++p) {
+          result.at<Vec3b>(i, j)[p] = calculatePixel(src, kernel, i, j, p);
+        }
+      }
+    }
+  }
+}
+
+uchar calculateGreyPixel(const Mat& src, const vector<vector<double> >& kernel,
+                         int i, int j) {
+  int newPixel = 0;
+  int div = 0;
+  int border = static_cast<int>(kernel.size() / 2);
+
+  for (unsigned k = 0; k < kernel.size(); ++k) {
+    for (unsigned l = 0; l < kernel.size(); ++l) {
+      div += abs(kernel[k][l]);
+      newPixel += src.at<uchar>(i + static_cast<int>(k) - border,
+                                j + static_cast<int>(l) - border) *
+                  kernel[k][l];
+    }
+  }
+
+  newPixel /= div;
+  newPixel = newPixel > 255 ? 255 : newPixel;
+  newPixel = newPixel < 0 ? 0 : newPixel;
+  return static_cast<uchar>(newPixel);
+}
+
+uchar calculatePixel(const Mat& src, const vector<vector<double> >& kernel,
+                     int i, int j, int p) {
+  int newPixel = 0;
+  int border = static_cast<int>(kernel.size() / 2);
+
+  for (unsigned k = 0; k < kernel.size(); ++k) {
+    for (unsigned l = 0; l < kernel.size(); ++l) {
+      newPixel += src.at<Vec3b>(i + static_cast<int>(k) - border,
+                                j + static_cast<int>(l) - border)[p] *
+                  kernel[k][l];
+    }
+  }
+
+  newPixel = newPixel > 255 ? 255 : newPixel;
+  newPixel = newPixel < 0 ? 0 : newPixel;
+  return static_cast<uchar>(newPixel);
 }
