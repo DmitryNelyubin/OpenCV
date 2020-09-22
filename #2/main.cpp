@@ -77,12 +77,11 @@ void customFilter(const Mat& src, Mat& result,
 uchar calculateGreyPixel(const Mat& src, const vector<vector<double> >& kernel,
                          int i, int j) {
   int newPixel = 0;
-  int div = 0;
+  int div = static_cast<int>(kernel.size() * kernel.size());
   int border = static_cast<int>(kernel.size() / 2);
 
   for (unsigned k = 0; k < kernel.size(); ++k) {
     for (unsigned l = 0; l < kernel.size(); ++l) {
-      div += abs(kernel[k][l]);
       newPixel += src.at<uchar>(i + static_cast<int>(k) - border,
                                 j + static_cast<int>(l) - border) *
                   kernel[k][l];
