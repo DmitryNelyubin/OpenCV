@@ -8,10 +8,8 @@ void customSmoothing(const Mat& src, Mat& result, unsigned size);
 void customGradient(const Mat& src, Mat& result);
 void customFilter(const Mat& src, Mat& result,
                   const vector<vector<double> >& kernel);
-uchar calculateGreyPixel(const Mat& src, const vector<vector<double> >& kernel,
-                         int i, int j);
 uchar calculatePixel(const Mat& src, const vector<vector<double> >& kernel,
-                     int i, int j, int p);
+                     int i, int j);
 
 int main(int argc, char** argv) {
   if (argc != 2) return -1;
@@ -39,8 +37,7 @@ int main(int argc, char** argv) {
 void customSmoothing(const Mat& src, Mat& result, unsigned size) {
   src.copyTo(result);
 
-  vector<vector<double> > kernel(size,
-                                 vector<double>(size, 1. / (size * size)));
+  vector<vector<double> > kernel(size, vector<double>(size, 1.));
 
   customFilter(src, result, kernel);
 }
@@ -60,22 +57,28 @@ void customFilter(const Mat& src, Mat& result,
   if (src.type() == 0) {
     for (int i = border; i < rows - border + 1; ++i) {
       for (int j = border; j < rows - border + 1; ++j) {
-        result.at<uchar>(i, j) = calculateGreyPixel(src, kernel, i, j);
+        result.at<uchar>(i, j) = calculatePixel(src, kernel, i, j);
       }
     }
   } else {
+    vector<Mat> channels;
+    split(src, channels);
+    vector<Mat> results = channels;
+
     for (int i = border; i < rows - border + 1; ++i) {
       for (int j = border; j < rows - border + 1; ++j) {
-        for (int p = 0; p < 3; ++p) {
-          result.at<Vec3b>(i, j)[p] = calculatePixel(src, kernel, i, j, p);
-        }
+        results[0].at<uchar>(i, j) = calculatePixel(channels[0], kernel, i, j);
+        results[1].at<uchar>(i, j) = calculatePixel(channels[1], kernel, i, j);
+        results[2].at<uchar>(i, j) = calculatePixel(channels[2], kernel, i, j);
       }
     }
+
+    merge(results, result);
   }
 }
 
-uchar calculateGreyPixel(const Mat& src, const vector<vector<double> >& kernel,
-                         int i, int j) {
+uchar calculatePixel(const Mat& src, const vector<vector<double> >& kernel,
+                     int i, int j) {
   int newPixel = 0;
   int div = static_cast<int>(kernel.size() * kernel.size());
   int border = static_cast<int>(kernel.size() / 2);
@@ -89,25 +92,5 @@ uchar calculateGreyPixel(const Mat& src, const vector<vector<double> >& kernel,
   }
 
   newPixel /= div;
-  newPixel = newPixel > 255 ? 255 : newPixel;
-  newPixel = newPixel < 0 ? 0 : newPixel;
-  return static_cast<uchar>(newPixel);
-}
-
-uchar calculatePixel(const Mat& src, const vector<vector<double> >& kernel,
-                     int i, int j, int p) {
-  int newPixel = 0;
-  int border = static_cast<int>(kernel.size() / 2);
-
-  for (unsigned k = 0; k < kernel.size(); ++k) {
-    for (unsigned l = 0; l < kernel.size(); ++l) {
-      newPixel += src.at<Vec3b>(i + static_cast<int>(k) - border,
-                                j + static_cast<int>(l) - border)[p] *
-                  kernel[k][l];
-    }
-  }
-
-  newPixel = newPixel > 255 ? 255 : newPixel;
-  newPixel = newPixel < 0 ? 0 : newPixel;
-  return static_cast<uchar>(newPixel);
+  return saturate_cast<uchar>(newPixel);
 }
