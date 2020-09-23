@@ -37,7 +37,8 @@ int main(int argc, char** argv) {
 void customSmoothing(const Mat& src, Mat& result, unsigned size) {
   src.copyTo(result);
 
-  vector<vector<double> > kernel(size, vector<double>(size, 1.));
+  vector<vector<double> > kernel(size,
+                                 vector<double>(size, 1. / (size * size)));
 
   customFilter(src, result, kernel);
 }
@@ -80,7 +81,6 @@ void customFilter(const Mat& src, Mat& result,
 uchar calculatePixel(const Mat& src, const vector<vector<double> >& kernel,
                      int i, int j) {
   int newPixel = 0;
-  int div = static_cast<int>(kernel.size() * kernel.size());
   int border = static_cast<int>(kernel.size() / 2);
 
   for (unsigned k = 0; k < kernel.size(); ++k) {
@@ -91,6 +91,5 @@ uchar calculatePixel(const Mat& src, const vector<vector<double> >& kernel,
     }
   }
 
-  newPixel /= div;
   return saturate_cast<uchar>(newPixel);
 }
