@@ -52,17 +52,18 @@ int main() {
       break;
     }
 
+    Mat dst(480, 640, CV_8UC3);
+    warp(src, dst);
+
+    putText(src, "FPS: 25     Time: " + std::to_string(time) + "ms",
+            Point(10, 50), FONT_HERSHEY_DUPLEX, 1., CV_RGB(255, 0, 0), 2);
+
     // time for FPS
     auto end = std::chrono::steady_clock::now();
     auto ms =
         std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
     time += ms.count();
 
-    Mat dst(480, 640, CV_8UC3);
-    warp(src, dst);
-
-    putText(src, "FPS: 25     Time: " + std::to_string(time) + "ms",
-            Point(10, 50), FONT_HERSHEY_DUPLEX, 1., CV_RGB(255, 0, 0), 2);
     imshow("source", src);
     imshow("result", dst);
 
